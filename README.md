@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Brew Coffee
 
 A responsive sales and inventory prototype for one Head Office and three branches, built with Next.js 16 App Router, TypeScript, Tailwind CSS 4, Framer Motion, Recharts and a Supabase-ready data boundary.
@@ -71,3 +72,6 @@ npm run test:e2e
 ```
 
 Domain tests verify atomic inventory changes, branch isolation, duplicate receipt prevention, discrepancy validation, sales reconciliation and audit behavior. Browser tests cover the end-to-end transfer flow, persisted branch scope, sales editing, notifications, login errors and mobile layout. Browser tests use installed Microsoft Edge by default; set PLAYWRIGHT_BASE_URL to test another local port.
+=======
+# business-launcher
+>>>>>>> 13c81c94686368747dc366e6826dc8f352c5f39d
