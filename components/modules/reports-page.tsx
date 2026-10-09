@@ -31,6 +31,8 @@ export function ReportsPage({ module }: { module: string }) {
   const [period, setPeriod] = useState("month");
   const [inventoryView, setInventoryView] = useState("Current inventory");
   const inventory = module === "inventory-reports";
+  const weekStart = new Date(`${TODAY}T12:00:00Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() - 6);
   const sales = store.sales.filter(
     (s) =>
       s.status === "Submitted" &&
@@ -38,8 +40,8 @@ export function ReportsPage({ module }: { module: string }) {
       (period === "day"
         ? s.date === TODAY
         : period === "week"
-          ? s.date >= "2026-10-02"
-          : s.date.startsWith("2026-10")),
+          ? s.date >= weekStart.toISOString().slice(0,10) && s.date <= TODAY
+          : s.date.startsWith(TODAY.slice(0,7)) && s.date <= TODAY),
   );
   const total = sales.reduce((a, s) => a + s.gross - s.discounts, 0);
   const payments = [
@@ -269,7 +271,7 @@ export function ReportsPage({ module }: { module: string }) {
         <span className="muted">
           {inventory
             ? "Current stock snapshot"
-            : "Period ending October 8, 2026"}
+            : `Period ending ${TODAY}`}
         </span>
       </div>
       <div className="stats-grid module-stats">

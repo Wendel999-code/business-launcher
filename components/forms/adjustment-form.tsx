@@ -15,7 +15,7 @@ export function AdjustmentForm({
   const [location, setLocation] = useState(
     profile.role === "admin" ? "hq" : profile.branchId,
   );
-  const [productId, setProduct] = useState("p1");
+  const [productId, setProduct] = useState(store.products.find(p => p.active)?.id ?? "");
   const [quantity, setQuantity] = useState(0);
   const [reason, setReason] = useState(
     type === "wastage" ? "Spillage" : "Damaged",
@@ -25,7 +25,8 @@ export function AdjustmentForm({
     store.inventory.find(
       (x) => x.locationId === location && x.productId === productId,
     )?.quantity ?? 0;
-  const p = store.products.find((p) => p.id === productId)!;
+  const p = store.products.find((p) => p.id === productId);
+  if (!p) return <div className="form-body"><p>Add a product before recording inventory changes.</p><button className="button secondary" onClick={onClose}>Close</button></div>;
   const delta =
     type === "count"
       ? quantity - current

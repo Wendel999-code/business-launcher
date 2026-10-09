@@ -5,6 +5,7 @@ import { useApp } from "@/components/providers";
 import { Transfer } from "@/types";
 import { TODAY } from "@/lib/utils";
 import { BranchSelect } from "./branch-select";
+import { branches } from "@/data/dummy/branches";
 export function TransferForm({
   onClose,
   transfer: existing,
@@ -13,9 +14,9 @@ export function TransferForm({
   transfer?: Transfer;
 }) {
   const { store, profile, execute } = useApp();
-  const [branch, setBranch] = useState(existing?.branchId ?? "downtown");
+  const [branch, setBranch] = useState(existing?.branchId ?? branches[0].id);
   const [items, setItems] = useState(
-    existing?.items ?? [{ productId: "p1", quantity: 20 }],
+    existing?.items ?? [{ productId: store.products.find(p => p.active)?.id ?? "", quantity: 20 }],
   );
   const [date, setDate] = useState(existing?.date ?? TODAY);
   const [notes, setNotes] = useState(existing?.notes ?? "");
@@ -97,6 +98,7 @@ export function TransferForm({
                     )
                   }
                 >
+                  <option value="" disabled>Select a product</option>
                   {store.products
                     .filter((p) => p.active)
                     .map((p) => (
@@ -152,7 +154,7 @@ export function TransferForm({
                 productId:
                   store.products.find(
                     (p) => p.active && !items.some((i) => i.productId === p.id),
-                  )?.id ?? "p1",
+                  )?.id ?? "",
                 quantity: 1,
               },
             ])

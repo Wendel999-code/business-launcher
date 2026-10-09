@@ -1,4 +1,4 @@
-export const TODAY = "2026-10-08";
+export const TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 export const money = (n: number, decimals = 0) =>
   new Intl.NumberFormat("en-PH", {
     style: "currency",

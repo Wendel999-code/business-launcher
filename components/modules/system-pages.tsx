@@ -269,7 +269,7 @@ export function UsersPage() {
           </h1>
           <p>The people behind every good day at Brew Coffee.</p>
         </div>
-        <Badge>5 Active Users</Badge>
+        <Badge>{profiles.length} Active Users</Badge>
       </div>
       <DataTable
         title="Team"

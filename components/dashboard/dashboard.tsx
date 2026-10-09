@@ -27,6 +27,7 @@ import { SalesChart } from "./sales-chart";
 import { WorkflowModal } from "@/components/forms/workflow-modal";
 import { money, number, stockStatus, TODAY, exportCsv } from "@/lib/utils";
 import { canAccessLocation } from "@/lib/permissions";
+import { OperationalSnapshot } from "./operational-snapshot";
 export function Dashboard({ branchId }: { branchId?: string }) {
   const { store, profile } = useApp();
   const router = useRouter();
@@ -47,9 +48,10 @@ export function Dashboard({ branchId }: { branchId?: string }) {
     .reduce((a, s) => a + s.gross - s.discounts, 0);
   const lowStock = store.inventory.filter(
     (x) =>
-      (scope === "all" ? x.locationId !== "hq" : x.locationId === scope) &&
-      x.quantity <
-        (store.products.find((p) => p.id === x.productId)?.minimum ?? 0),
+      canAccessLocation(profile, x.locationId) &&
+      (scope === "all" || x.locationId === scope) &&
+      store.products.find(p => p.id === x.productId)?.active &&
+      stockStatus(x.quantity, store.products.find(p => p.id === x.productId)?.minimum ?? 0) !== "In Stock",
   );
   const pending = store.transfers.filter(
     (t) =>
@@ -176,7 +178,7 @@ export function Dashboard({ branchId }: { branchId?: string }) {
         <Stat
           label="This month's sales"
           value={money(monthly)}
-          caption="Month to date · October"
+          caption={`Month to date · ${new Date(date + 'T12:00:00+08:00').toLocaleDateString('en-US', {month:'long', timeZone:'Asia/Manila'})}`}
           icon={<ChartNoAxesCombined size={19} />}
           spark
         />
@@ -184,25 +186,26 @@ export function Dashboard({ branchId }: { branchId?: string }) {
           label={isAdmin ? "Active branches" : "Today's transactions"}
           value={
             isAdmin
-              ? String(scope === "all" ? 3 : 1)
+              ? String(scope === "all" ? branches.length : 1)
               : number(todaysTransactions)
           }
           change={isAdmin ? "All operating" : undefined}
-          caption={isAdmin ? "across Metro Manila" : "completed transactions"}
+          caption={isAdmin ? "" : "completed transactions"}
           icon={<Store size={19} />}
         />
-        <Stat
+        {/* <Stat
           label="Low stock items"
           value={String(lowStock.length)}
           change="Needs attention"
-          caption={`across ${scope === "all" ? "3 branches" : "this branch"}`}
+          caption={scope === "all" ? "across all locations" : "at this branch"}
           icon={<TriangleAlert size={19} />}
           warning
-        />
+        /> */}
       </div>
+      {/* <OperationalSnapshot scope={scope}/> */}
       <div className="dashboard-middle">
         <SalesChart branchId={scope === "all" ? undefined : scope} />
-        <div className="right-panels">
+        {/* <div className="right-panels">
           <section className="quick-actions">
             <div className="quick-title">
               <span className="quick-coffee">
@@ -252,14 +255,14 @@ export function Dashboard({ branchId }: { branchId?: string }) {
               <ArrowRight size={18} />
             </button>
           </section>
-        </div>
+        </div> */}
       </div>
       <div className="dashboard-bottom">
         <Panel
           title={isAdmin ? "Branch performance" : "Daily sales summary"}
           subtitle={
             isAdmin
-              ? "Three branches. One shared standard."
+              ? ""
               : `Recent sales for ${locationName(scope)}.`
           }
           action={
@@ -277,7 +280,7 @@ export function Dashboard({ branchId }: { branchId?: string }) {
                 <tr>
                   <th>{isAdmin ? "BRANCH" : "DATE"}</th>
                   <th>NET SALES</th>
-                  <th>TRANSACTIONS</th>
+                  {/* <th>TRANSACTIONS</th> */}
                   <th>{isAdmin ? "INVENTORY" : "STATUS"}</th>
                   <th />
                 </tr>
@@ -323,11 +326,11 @@ export function Dashboard({ branchId }: { branchId?: string }) {
                                 ),
                               )}
                             </td>
-                            <td>
+                            {/* <td>
                               {number(
                                 s.reduce((a, s) => a + s.transactions, 0),
                               )}
-                            </td>
+                            </td> */}
                             <td>
                               <Badge>{low > 0 ? "Low Stock" : "Healthy"}</Badge>
                             </td>
@@ -353,7 +356,7 @@ export function Dashboard({ branchId }: { branchId?: string }) {
               </tbody>
             </table>
           </div>
-          <div className="table-summary">
+          {/* <div className="table-summary">
             <span>
               <span className="online-dot" />{" "}
               {isAdmin
@@ -365,9 +368,9 @@ export function Dashboard({ branchId }: { branchId?: string }) {
                 ? `${number(todaysTransactions)} total transactions today`
                 : "Daily reports stay in your sales history"}
             </span>
-          </div>
+          </div> */}
         </Panel>
-        <Panel
+        {/* <Panel
           title="Stock needs attention"
           subtitle="A timely top-up goes a long way."
           action={<span className="count-badge">{lowStock.length} items</span>}
@@ -415,9 +418,9 @@ export function Dashboard({ branchId }: { branchId?: string }) {
             <span>View all inventory alerts</span>
             <ArrowRight size={15} />
           </button>
-        </Panel>
+        </Panel> */}
       </div>
-      <div className="dashboard-bottom last-row">
+      {/* <div className="dashboard-bottom last-row">
         <Panel
           title="Recent stock transfers"
           subtitle="From our head office to your coffee counter."
@@ -491,7 +494,7 @@ export function Dashboard({ branchId }: { branchId?: string }) {
             ))}
           </div>
         </Panel>
-      </div>
+      </div> */}
       {modal && <WorkflowModal type={modal} onClose={() => setModal(null)} />}
     </>
   );

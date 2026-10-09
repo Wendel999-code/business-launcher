@@ -1,8 +1,9 @@
 import { BranchDetails } from "@/components/modules/branches-page";
+import { branches } from "@/data/dummy/branches";
 import { Suspense } from "react";
 import Loading from "../../loading";
 export function generateStaticParams() {
-  return ["downtown", "riverside", "uptown"].map((id) => ({ id }));
+  return branches.map(b => ({id:b.id}));
 }
 export default function BranchPage({
   params,

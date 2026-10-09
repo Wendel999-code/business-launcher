@@ -1,6 +1,7 @@
 import { Store, Profile, Transfer, Sale, Movement, Product } from "@/types";
 import { canAccessLocation } from "./permissions";
 import { TODAY } from "./utils";
+import { branches } from "@/data/dummy/branches";
 export type Command =
   | { type: "transfer"; transfer: Transfer }
   | {
@@ -26,7 +27,7 @@ export type Command =
       physicalQuantity: number;
       remarks: string;
     }
-  | { type: "product"; product: Product }
+  | { type: "product"; product: Product; openingQuantity?: number }
   | { type: "read"; id?: string };
 export function applyCommand(
   original: Store,
@@ -65,9 +66,10 @@ export function applyCommand(
     const stock = store.inventory.find(
       (x) => x.productId === productId && x.locationId === locationId,
     );
-    if (!stock || stock.quantity + quantity < 0)
+    const balance = Math.round(((stock?.quantity ?? 0) + quantity) * 1e6) / 1e6;
+    if (!stock || balance < 0)
       throw new Error("Insufficient stock for this operation.");
-    stock.quantity += quantity;
+    stock.quantity = balance;
     stock.updatedAt = TODAY;
     const movement: Movement = {
       id: uid(),
@@ -85,6 +87,9 @@ export function applyCommand(
   if (command.type === "transfer") {
     if (profile.role !== "admin")
       throw new Error("Only Head Office can create transfers.");
+    if (!branches.some(b => b.id === command.transfer.branchId) ||
+      !["Draft", "Pending"].includes(command.transfer.status) || !command.transfer.id.trim())
+      throw new Error("Choose a valid destination and create a draft or pending transfer.");
     if (
       !command.transfer.items.length ||
       new Set(command.transfer.items.map((x) => x.productId)).size !==
@@ -195,7 +200,7 @@ export function applyCommand(
     });
   } else if (command.type === "sale") {
     const s = command.sale;
-    if (!canAccessLocation(profile, s.branchId) || s.branchId === "hq")
+    if (!canAccessLocation(profile, s.branchId) || !branches.some(b => b.id === s.branchId))
       throw new Error("Choose your assigned branch.");
     if (
       [s.gross, s.discounts, s.transactions, s.cash, s.wallet, s.card].some(
@@ -225,6 +230,31 @@ export function applyCommand(
     const previous = store.sales.find((x) => x.id === s.id);
     if (previous && !canAccessLocation(profile, previous.branchId))
       throw new Error("This report belongs to another branch.");
+    if (previous?.status === "Submitted" &&
+      (s.status === "Draft" || previous.branchId !== s.branchId || previous.date !== s.date))
+      throw new Error("Submitted sales must keep their branch, reporting date and submitted status.");
+    const items = s.items ?? [];
+    if (new Set(items.map(i => i.productId)).size !== items.length)
+      throw new Error("Choose each inventory product only once.");
+    for (const item of items) {
+      const p = store.products.find(p => p.id === item.productId);
+      const unchanged = previous?.items?.find(i => i.productId === item.productId);
+      if (!p || p.inventoryTracked === false || (!p.active && (!unchanged || unchanged.quantity !== item.quantity)) ||
+        !Number.isFinite(item.quantity) || item.quantity <= 0 || !["Sold", "Consumed"].includes(item.kind))
+        throw new Error("Choose an active tracked product and a positive quantity sold or consumed.");
+    }
+    if (s.status === "Submitted") {
+      const oldItems = previous?.status === "Submitted" ? previous.items ?? [] : [];
+      const productIds = new Set([...oldItems, ...items].map(i => i.productId));
+      for (const productId of productIds) {
+        const oldQuantity = oldItems.find(i => i.productId === productId)?.quantity ?? 0;
+        const item = items.find(i => i.productId === productId);
+        const difference = oldQuantity - (item?.quantity ?? 0);
+        if (difference !== 0) move(productId, s.branchId, difference,
+          difference > 0 ? "Sales Correction" : item?.kind === "Consumed" ? "Consumption" : "Sale",
+          s.id, `${previous ? "Updated" : "Submitted"} sales report: ${item?.kind ?? "Removed item"}`);
+      }
+    }
     store.sales = store.sales.filter((x) => x.id !== s.id);
     store.sales.unshift(s);
     audit(
@@ -330,10 +360,13 @@ export function applyCommand(
     )
       throw new Error("This SKU already exists.");
     const existing = store.products.find((x) => x.id === p.id);
+    const opening = command.openingQuantity ?? 0;
+    if (!Number.isFinite(opening) || opening < 0 || existing && opening !== 0)
+      throw new Error("Opening stock must be non-negative and can only be entered when adding a product.");
     store.products = store.products.filter((x) => x.id !== p.id);
     store.products.push(p);
     if (!existing)
-      ["hq", "downtown", "riverside", "uptown"].forEach((locationId) =>
+      ["hq", ...branches.map(b => b.id)].forEach((locationId) =>
         store.inventory.push({
           productId: p.id,
           locationId,
@@ -341,6 +374,7 @@ export function applyCommand(
           updatedAt: TODAY,
         }),
       );
+    if (!existing && opening > 0) move(p.id, "hq", opening, "Stock Received", p.sku, "Opening Head Office inventory");
     audit(
       `${existing ? "Updated" : "Created"} product ${p.name}`,
       "Products",

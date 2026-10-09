@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import { useApp } from "@/components/providers";
-import { Sale } from "@/types";
+import { Sale, SaleItem } from "@/types";
 import { money, TODAY } from "@/lib/utils";
 import { BranchSelect } from "./branch-select";
+import { SaleItems } from "./sale-items";
+import { branches } from "@/data/dummy/branches";
 export function SaleForm({
   onClose,
   sale,
@@ -14,7 +16,7 @@ export function SaleForm({
   const { profile, execute } = useApp();
   const [branch, setBranch] = useState(
     sale?.branchId ??
-      (profile.role === "admin" ? "downtown" : profile.branchId),
+      (profile.role === "admin" ? branches[0].id : profile.branchId),
   );
   const [date, setDate] = useState(sale?.date ?? TODAY);
   const [gross, setGross] = useState(sale?.gross ?? 0);
@@ -24,6 +26,7 @@ export function SaleForm({
   const [wallet, setWallet] = useState(sale?.wallet ?? 0);
   const [card, setCard] = useState(sale?.card ?? 0);
   const [error, setError] = useState("");
+  const [items, setItems] = useState<SaleItem[]>(sale?.items ?? []);
   const net = gross - discount;
   const save = (draft: boolean) => {
     if (
@@ -41,6 +44,7 @@ export function SaleForm({
           card,
           user: profile.name,
           status: draft ? "Draft" : "Submitted",
+          items,
         },
       })
     )
@@ -59,7 +63,7 @@ export function SaleForm({
         <div className="form-grid">
           <label>
             Branch
-            <BranchSelect value={branch} onChange={setBranch} />
+            {sale?.status === "Submitted" ? <input disabled value={branches.find(b => b.id === branch)?.name ?? branch}/> : <BranchSelect value={branch} onChange={setBranch} />}
           </label>
           <label>
             Reporting date
@@ -67,6 +71,7 @@ export function SaleForm({
               type="date"
               required
               max={TODAY}
+              disabled={sale?.status === "Submitted"}
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
@@ -109,6 +114,7 @@ export function SaleForm({
             <strong>{money(net, 2)}</strong>
           </div>
         </div>
+        <SaleItems items={items} onChange={setItems} branchId={branch} previous={sale}/>
         <h3 className="form-section-title">Payment breakdown</h3>
         <div className="form-grid three">
           {[
@@ -151,13 +157,7 @@ export function SaleForm({
           Cancel
         </button>
         <div>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => save(true)}
-          >
-            Save draft
-          </button>
+          {sale?.status !== "Submitted" && <button type="button" className="button secondary" onClick={() => save(true)}>Save draft</button>}
           <button className="button primary">Submit daily sales</button>
         </div>
       </div>

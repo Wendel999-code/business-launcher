@@ -25,12 +25,18 @@ export interface Product {
   reorder: number;
   active: boolean;
   cost: number;
+  inventoryTracked?: boolean;
 }
 export interface Inventory {
   productId: string;
   locationId: string;
   quantity: number;
   updatedAt: string;
+}
+export interface SaleItem {
+  productId: string;
+  quantity: number;
+  kind: "Sold" | "Consumed";
 }
 export interface Sale {
   id: string;
@@ -44,6 +50,7 @@ export interface Sale {
   card: number;
   user: string;
   status: "Submitted" | "Draft";
+  items?: SaleItem[];
 }
 export type TransferStatus =
   "Draft" | "Pending" | "Dispatched" | "In Transit" | "Received" | "Cancelled";

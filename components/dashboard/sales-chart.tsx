@@ -20,16 +20,12 @@ export function SalesChart({ branchId }: { branchId?: string }) {
   const [filter, setFilter] = useState("all");
   const branch =
     profile.role !== "admin" ? profile.branchId : (branchId ?? filter);
-  const count =
-    range === "Today"
-      ? 1
-      : range === "Last 7 days"
-        ? 7
-        : range === "Last 30 days"
-          ? 30
-          : range === "This month"
-            ? 8
-            : 365;
+  const start = new Date(`${TODAY}T12:00:00Z`);
+  if (range === "Last 7 days") start.setUTCDate(start.getUTCDate() - 6);
+  else if (range === "Last 30 days") start.setUTCDate(start.getUTCDate() - 29);
+  else if (range === "This month") start.setUTCDate(1);
+  else if (range === "This year") { start.setUTCMonth(0, 1); }
+  const firstDate = start.toISOString().slice(0,10);
   const dates = [
     ...new Set(
       store.sales
@@ -37,13 +33,12 @@ export function SalesChart({ branchId }: { branchId?: string }) {
           (s) =>
             s.status === "Submitted" &&
             s.date <= TODAY &&
-            (range !== "This month" || s.date.startsWith("2026-10")),
+            s.date >= firstDate && (branch === "all" || s.branchId === branch),
         )
         .map((s) => s.date),
     ),
   ]
-    .sort()
-    .slice(-count);
+    .sort();
   const data = dates.map((date) => ({
     date:
       range === "Today"

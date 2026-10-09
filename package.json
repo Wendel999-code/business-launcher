@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test tests/operations.test.ts",
+    "test": "tsx --test tests/operations.test.ts tests/local-operations.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

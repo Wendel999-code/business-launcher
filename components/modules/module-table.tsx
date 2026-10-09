@@ -138,6 +138,7 @@ export function createModuleTable({
         cash: s.cash,
         wallet: s.wallet,
         card: s.card,
+        items: s.items?.map(i => { const p = store.products.find(p => p.id === i.productId); return `${p?.name ?? i.productId}: ${i.quantity} ${p?.unit ?? ''} ${i.kind.toLowerCase()}`; }).join(', ') || 'No tracked inventory usage',
       }));
     columns = [
       { key: "date", label: "DATE", render: (r) => dateLabel(String(r.date)) },

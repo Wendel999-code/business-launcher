@@ -7,10 +7,11 @@ import {
   ReactNode,
 } from "react";
 import { Store, Profile } from "@/types";
-import { initialStore } from "@/data/dummy";
+import { emptyStore } from "@/data/initial-state";
 import { profiles } from "@/data/dummy/branches";
-import { demoRepository } from "@/lib/repository";
-import { applyCommand, Command } from "@/lib/operations";
+import { demoRepository, STORAGE_KEY } from "@/lib/repository";
+import { Command } from "@/lib/operations";
+import { resolveLocation } from "@/lib/storage-migrations";
 interface AppContext {
   store: Store;
   profile: Profile;
@@ -21,19 +22,51 @@ interface AppContext {
 }
 const Context = createContext<AppContext | null>(null);
 export function Providers({ children }: { children: ReactNode }) {
-  const [store, setStore] = useState(initialStore);
+  const [store, setStore] = useState(emptyStore);
   const [profile, setProfile] = useState(profiles[0]);
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
   useEffect(() => {
-    setStore(demoRepository.load());
-    try {
-      const id =
-        localStorage.getItem("brew-profile") ||
-        sessionStorage.getItem("brew-profile");
-      setProfile(profiles.find((p) => p.id === id) ?? profiles[0]);
-    } catch {}
-    setReady(true);
+    const restore = setTimeout(() => {
+      try {
+        setStore(demoRepository.load());
+      } catch (e) {
+        setMessage(
+          e instanceof Error ? e.message : "Unable to read workspace storage.",
+        );
+      }
+      try {
+        const id =
+          localStorage.getItem("brew-profile") ||
+          sessionStorage.getItem("brew-profile");
+        setProfile(
+          profiles.find((p) => p.id === (id ? resolveLocation(id) : id)) ??
+            profiles[0],
+        );
+      } catch {}
+      setReady(true);
+    }, 0);
+    const refresh = () => {
+      try {
+        setStore(demoRepository.load());
+      } catch (e) {
+        setMessage(
+          e instanceof Error
+            ? e.message
+            : "Unable to refresh workspace storage.",
+        );
+      }
+    };
+    const sync = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY || event.key === null) refresh();
+    };
+    window.addEventListener("storage", sync);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearTimeout(restore);
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
   useEffect(() => {
     if (message) {
@@ -51,8 +84,9 @@ export function Providers({ children }: { children: ReactNode }) {
   };
   const execute = (c: Command) => {
     try {
-      const next = applyCommand(store, profile, c);
-      demoRepository.save(next);
+      if (!ready)
+        throw new Error("Please wait for your saved workspace to load.");
+      const next = demoRepository.commit(profile, c);
       setStore(next);
       setMessage(
         c.type === "read"

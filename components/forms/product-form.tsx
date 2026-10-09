@@ -21,15 +21,17 @@ export function ProductForm({
       reorder: 25,
       cost: 0,
       active: true,
+      inventoryTracked: true,
     },
   );
+  const [openingQuantity, setOpeningQuantity] = useState(0);
   const update = (key: string, value: string | number) =>
     setP({ ...p, [key]: value });
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (execute({ type: "product", product: p })) onClose();
+        if (execute({ type: "product", product: p, openingQuantity: product ? undefined : openingQuantity })) onClose();
       }}
     >
       <div className="form-body">
@@ -113,9 +115,17 @@ export function ProductForm({
             />
           </label>
         </div>
+        {!product && <label className="form-full">Initial Head Office Quantity ({p.unit})
+          <input type="number" min="0" step="any" required value={openingQuantity}
+            onChange={e => setOpeningQuantity(Number(e.target.value))}/>
+        </label>}
+        <label className="checkbox-label form-full"><input type="checkbox" checked={p.inventoryTracked !== false}
+          onChange={e => setP({...p, inventoryTracked: e.target.checked})}/>
+          Track inventory when sold or consumed
+        </label>
         <p className="field-help">
-          New products start with zero stock. Use an adjustment with a reason to
-          record opening inventory.
+          Opening quantities are added to Head Office with a Stock Received
+          movement. Branches start at zero until a transfer is received.
         </p>
       </div>
       <div className="modal-footer">

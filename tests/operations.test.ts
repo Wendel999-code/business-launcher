@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { applyCommand } from "../lib/operations";
-import { initialStore } from "../data/dummy";
+import { initialStore as fixture } from "../data/dummy";
+import { normalizeStoredLocations } from "../lib/storage-migrations";
+const initialStore = normalizeStoredLocations(fixture);
 import { profiles } from "../data/dummy/branches";
 const admin = profiles[0],
   downtown = profiles[1],
@@ -23,8 +25,8 @@ test("dispatch deducts source stock once, and branch receipt adds actual quantit
   });
   assert.equal(quantity(dispatched, "hq"), before - 20);
   assert.equal(
-    quantity(dispatched, "riverside"),
-    quantity(initialStore, "riverside"),
+    quantity(dispatched, riverside.branchId),
+    quantity(initialStore, riverside.branchId),
   );
   assert.throws(() =>
     applyCommand(dispatched, admin, {
@@ -41,8 +43,8 @@ test("dispatch deducts source stock once, and branch receipt adds actual quantit
     remarks: "One kg missing from delivery",
   });
   assert.equal(
-    quantity(received, "riverside"),
-    quantity(initialStore, "riverside") + 19,
+    quantity(received, riverside.branchId),
+    quantity(initialStore, riverside.branchId) + 19,
   );
   assert.equal(
     received.transfers.find((t) => t.id === "TR-2026-0107")!.status,
@@ -101,7 +103,7 @@ test("branch accounts cannot adjust another branch or create transfers", () => {
       applyCommand(initialStore, downtown, {
         type: "adjust",
         productId: "p1",
-        locationId: "riverside",
+        locationId: riverside.branchId,
         quantity: -1,
         reason: "Damaged",
         remarks: "Damage",
@@ -139,7 +141,7 @@ test("adjustments require remarks, reject losses beyond stock, and append histor
       applyCommand(initialStore, downtown, {
         type: "adjust",
         productId: "p1",
-        locationId: "downtown",
+        locationId: downtown.branchId,
         quantity: -1,
         reason: "Damaged",
         remarks: "",
@@ -151,7 +153,7 @@ test("adjustments require remarks, reject losses beyond stock, and append histor
       applyCommand(initialStore, downtown, {
         type: "adjust",
         productId: "p1",
-        locationId: "downtown",
+        locationId: downtown.branchId,
         quantity: -999,
         reason: "Damaged",
         remarks: "Broken stock",
@@ -161,12 +163,12 @@ test("adjustments require remarks, reject losses beyond stock, and append histor
   const next = applyCommand(initialStore, downtown, {
     type: "adjust",
     productId: "p1",
-    locationId: "downtown",
+    locationId: downtown.branchId,
     quantity: -2,
     reason: "Damaged",
     remarks: "Damaged packaging",
   });
-  assert.equal(quantity(next, "downtown"), 40);
+  assert.equal(quantity(next, downtown.branchId), 40);
   assert.equal(next.movements[0].quantity, -2);
   assert.equal(next.activity[0].user, downtown.name);
 });
@@ -194,7 +196,7 @@ test("sales reject mismatched payments, duplicates and cross-branch submissions"
   );
   const next = applyCommand(initialStore, downtown, { type: "sale", sale });
   assert.equal(next.sales[0].id, "new");
-  assert.equal(next.activity[0].branchId, "downtown");
+  assert.equal(next.activity[0].branchId, downtown.branchId);
 });
 test("draft edits preserve reference and deactivation preserves inventory history", () => {
   const transfer = {
@@ -218,7 +220,7 @@ test("mark all as read changes only notifications assigned to the branch", () =>
   const next = applyCommand(initialStore, downtown, { type: "read" });
   assert.ok(
     next.notifications
-      .filter((n) => n.branchId === "downtown")
+      .filter((n) => n.branchId === downtown.branchId)
       .every((n) => n.read),
   );
   assert.equal(next.notifications.find((n) => n.id === "n1")!.read, false);
@@ -227,7 +229,7 @@ test("physical counts persist zero variance and create adjustments only for diff
   const counted = applyCommand(initialStore, downtown, {
     type: "count",
     productId: "p1",
-    locationId: "downtown",
+    locationId: downtown.branchId,
     physicalQuantity: 42,
     remarks: "",
   });
@@ -238,7 +240,7 @@ test("physical counts persist zero variance and create adjustments only for diff
       applyCommand(initialStore, downtown, {
         type: "count",
         productId: "p1",
-        locationId: "downtown",
+        locationId: downtown.branchId,
         physicalQuantity: 40,
         remarks: "",
       }),
@@ -247,11 +249,11 @@ test("physical counts persist zero variance and create adjustments only for diff
   const adjusted = applyCommand(initialStore, downtown, {
     type: "count",
     productId: "p1",
-    locationId: "downtown",
+    locationId: downtown.branchId,
     physicalQuantity: 40,
     remarks: "Two kg variance found during closing count",
   });
-  assert.equal(quantity(adjusted, "downtown"), 40);
+  assert.equal(quantity(adjusted, downtown.branchId), 40);
   assert.equal(adjusted.counts[0].variance, -2);
   assert.equal(adjusted.movements[0].type, "Stock Count Correction");
 });

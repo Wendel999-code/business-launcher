@@ -26,7 +26,7 @@ export function BranchesPage() {
           </h1>
           <p>Three neighborhoods. The same love for a good cup of coffee.</p>
         </div>
-        <Badge>3 Active Branches</Badge>
+        <Badge>{branches.length} Active Branches</Badge>
       </div>
       <div className="branch-cards">
         {branches.map((b, i) => {
@@ -80,7 +80,7 @@ export function BranchesPage() {
                     <strong>
                       {money(
                         sales
-                          .filter((s) => s.date.startsWith("2026-10"))
+                          .filter((s) => s.date.startsWith(TODAY.slice(0,7)) && s.date <= TODAY)
                           .reduce((a, s) => a + s.gross - s.discounts, 0),
                       )}
                     </strong>

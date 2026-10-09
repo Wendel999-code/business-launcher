@@ -1,0 +1,32 @@
+.operational-snapshot {
+  margin: 22px 0;
+}
+.operational-snapshot .data-panel {
+  margin-top: 14px;
+}
+.sale-inventory-items {
+  margin: 22px 0;
+}
+.sale-inventory-items .field-help {
+  margin-bottom: 14px;
+}
+.sale-item-row .sale-kind {
+  width: 95px;
+}
+.sale-item-row > label:not(.grow) {
+  width: 100px;
+}
+@media (max-width: 600px) {
+  .sale-item-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sale-item-row .grow {
+    flex-basis: 100%;
+  }
+  .sale-item-row > label:not(.grow) {
+    flex: 1;
+  }
+}
