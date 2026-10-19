@@ -32,6 +32,7 @@ import { useApp } from "@/components/providers";
 import { profiles, locationName } from "@/data/dummy/branches";
 import { canAccess, canAccessLocation } from "@/lib/permissions";
 import { WorkflowModal } from "@/components/forms/workflow-modal";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 const groups = [
   {
     label: "",
@@ -337,9 +338,27 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {p.id === profile.id && <span className="online-dot" />}
                     </button>
                   ))}
-                  <Link href="/login" onClick={() => setProfileOpen(false)}>
-                    <LogOut size={16} /> Sign out / demo login
-                  </Link>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setProfileOpen(false);
+                      try {
+                        const supabase = createBrowserSupabaseClient();
+                        if (supabase) {
+                          await supabase.auth.signOut();
+                        }
+                        await fetch("/api/auth/logout", {
+                          method: "POST",
+                          credentials: "include",
+                        });
+                      } catch {
+                        // Ignore logout errors and continue to the login screen.
+                      }
+                      router.push("/login");
+                    }}
+                  >
+                    <LogOut size={16} /> Sign out
+                  </button>
                 </div>
               )}
             </div>

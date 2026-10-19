@@ -11,17 +11,74 @@ import {
 } from "lucide-react";
 import { Brand } from "@/components/ui";
 import { useApp } from "@/components/providers";
-import { profiles, locationName } from "@/data/dummy/branches";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { deriveRedirectPath, normalizeRole } from "@/lib/auth";
+
 export function Login() {
-  const { switchProfile, toast } = useApp();
+  const { toast } = useApp();
   const router = useRouter();
-  const [role, setRole] = useState("admin");
-  const [email, setEmail] = useState(profiles[0].email);
-  const [password, setPassword] = useState("brew2026");
+  const [email, setEmail] = useState("admin@brewcoffee.ph");
+  const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+
+    const supabase = createBrowserSupabaseClient();
+
+    if (!supabase) {
+      setError(
+        "Supabase is not configured yet. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      );
+      return;
+    }
+
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both your email address and password.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (signInError) {
+        setError("Your email or password is incorrect. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch("/api/auth/profile", {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.role) {
+        await supabase.auth.signOut();
+        setError("This account is not authorized for Brew Coffee access.");
+        setLoading(false);
+        return;
+      }
+
+      const role = normalizeRole(payload.role);
+      toast("Signed in securely with Supabase Auth.");
+      router.push(deriveRedirectPath(role));
+    } catch {
+      setError("We could not complete the login request. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="login-page">
       <div className="login-story">
@@ -48,47 +105,12 @@ export function Login() {
         <small>© 2026 Brew Coffee</small>
       </div>
       <div className="login-form-side">
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setError("");
-            const p = profiles.find(
-              (p) => p.email.toLowerCase() === email.toLowerCase(),
-            );
-            if (!p || password !== "brew2026") {
-              setError("Use a sample account and the demo password: brew2026.");
-              return;
-            }
-            setLoading(true);
-            await new Promise((r) => setTimeout(r, 500));
-            switchProfile(p, remember);
-            router.push("/dashboard");
-          }}
-        >
+        <form onSubmit={handleSubmit}>
           <span className="login-coffee">
             <Coffee size={28} />
           </span>
           <h2>Welcome back.</h2>
-          <p>A fresh start to a well-run day.</p>
-          <label>
-            Demo workspace
-            <select
-              value={role}
-              onChange={(e) => {
-                setRole(e.target.value);
-                setEmail(profiles.find((p) => p.id === e.target.value)!.email);
-                setPassword("brew2026");
-              }}
-            >
-              {profiles.map((p) => (
-                <option value={p.id} key={p.id}>
-                  {p.role === "admin"
-                    ? "Head Office Admin"
-                    : `${locationName(p.branchId)} · ${p.role === "staff" ? "Staff" : "Manager"}`}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p>Secure sign in for your Brew Coffee workspace.</p>
           <label>
             Email address
             <input
@@ -118,27 +140,6 @@ export function Login() {
               </button>
             </div>
           </label>
-          <div className="login-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />{" "}
-              Remember me
-            </label>
-            <button
-              className="text-link"
-              type="button"
-              onClick={() =>
-                toast(
-                  "Demo password: brew2026. Password recovery will be available with Supabase authentication.",
-                )
-              }
-            >
-              Forgot password?
-            </button>
-          </div>
           {error && (
             <p className="form-error" role="alert">
               {error}
@@ -156,9 +157,9 @@ export function Login() {
           <div className="login-demo">
             <ShieldCheck size={16} />
             <span>
-              You're exploring a demo workspace.
+              End-to-end authentication with Supabase.
               <br />
-              Sample data. Real possibilities.
+              Trusted role-based access for every workspace.
             </span>
           </div>
         </form>

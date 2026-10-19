@@ -1,9 +1,5 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { Dashboard } from "@/components/dashboard/dashboard";
+import { LandingPage } from "@/components/landing-page";
+
 export default function Home() {
-  return (
-    <AppShell>
-      <Dashboard />
-    </AppShell>
-  );
+  return <LandingPage />;
 }
